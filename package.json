@@ -1,0 +1,26 @@
+{
+  "name": "scanwhales",
+  "version": "1.0.0",
+  "description": "Real-time Hyperliquid whale trade monitor",
+  "private": true,
+  "scripts": {
+    "dev:server": "node --watch server/src/index.js",
+    "dev:client": "cd client && npx vite --port 5173",
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "build": "cd client && npx vite build",
+    "start": "node server/src/index.js",
+    "postinstall": "cd client && npm install && npm run build"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.7.0",
+    "cors": "^2.8.5",
+    "express": "^4.21.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
