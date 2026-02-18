@@ -191,21 +191,55 @@ function upsertWhale(address, time, notional) {
 }
 
 function getWhales({ limit = 100, offset = 0, tracked_only = false, sort = 'total_volume' } = {}) {
-  const validSorts = ['total_volume', 'last_seen', 'trade_count', 'first_seen'];
+  const validSorts = ['total_volume', 'last_seen', 'trade_count', 'first_seen', 'win_ratio'];
   const sortCol = validSorts.includes(sort) ? sort : 'total_volume';
-  const where = tracked_only ? 'WHERE is_tracked = 1' : '';
+  const where = tracked_only ? 'WHERE w.is_tracked = 1' : '';
 
   return getDb()
     .prepare(
-      `SELECT * FROM whales ${where}
-       ORDER BY ${sortCol} DESC
+      `SELECT w.*,
+              COALESCE(s.win_count, 0) as win_count,
+              COALESCE(s.close_count, 0) as close_count,
+              CASE WHEN COALESCE(s.close_count, 0) > 0
+                   THEN ROUND(100.0 * s.win_count / s.close_count, 1)
+                   ELSE NULL END as win_ratio
+       FROM whales w
+       LEFT JOIN (
+         SELECT whale_address,
+                SUM(CASE WHEN closed_pnl > 0 THEN 1 ELSE 0 END) as win_count,
+                COUNT(*) as close_count
+         FROM trades
+         WHERE closed_pnl IS NOT NULL
+         GROUP BY whale_address
+       ) s ON w.address = s.whale_address
+       ${where}
+       ORDER BY ${sortCol} DESC NULLS LAST
        LIMIT ? OFFSET ?`
     )
     .all(limit, offset);
 }
 
 function getWhale(address) {
-  return getDb().prepare('SELECT * FROM whales WHERE address = ?').get(address);
+  return getDb()
+    .prepare(
+      `SELECT w.*,
+              COALESCE(s.win_count, 0) as win_count,
+              COALESCE(s.close_count, 0) as close_count,
+              CASE WHEN COALESCE(s.close_count, 0) > 0
+                   THEN ROUND(100.0 * s.win_count / s.close_count, 1)
+                   ELSE NULL END as win_ratio
+       FROM whales w
+       LEFT JOIN (
+         SELECT whale_address,
+                SUM(CASE WHEN closed_pnl > 0 THEN 1 ELSE 0 END) as win_count,
+                COUNT(*) as close_count
+         FROM trades
+         WHERE closed_pnl IS NOT NULL AND whale_address = ?
+         GROUP BY whale_address
+       ) s ON w.address = s.whale_address
+       WHERE w.address = ?`
+    )
+    .get(address, address);
 }
 
 function updateWhale(address, updates) {

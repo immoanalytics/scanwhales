@@ -32,10 +32,12 @@ export default function WhalesView() {
     setSelectedWhale(whale);
     setEditLabel(whale.label || '');
     try {
-      const [trades, positions] = await Promise.all([
+      const [freshWhale, trades, positions] = await Promise.all([
+        api.getWhale(whale.address),
         api.getTrades({ whale_address: whale.address, limit: 50 }),
         api.getWhalePositions(whale.address).catch(() => null),
       ]);
+      if (freshWhale) setSelectedWhale(freshWhale);
       setWhaleTrades(trades);
       setWhalePositions(positions);
     } catch (e) {
@@ -79,6 +81,7 @@ export default function WhalesView() {
             <option value="total_volume">Total Volume</option>
             <option value="last_seen">Last Active</option>
             <option value="trade_count">Trade Count</option>
+            <option value="win_ratio">Win Ratio</option>
             <option value="first_seen">First Seen</option>
           </select>
         </div>
@@ -130,8 +133,8 @@ export default function WhalesView() {
                 <span>{w.trade_count}</span>
               </div>
               <div className="whale-stat">
-                First Seen
-                <span>{formatDate(w.first_seen)}</span>
+                Win Ratio
+                <span><WinRatio ratio={w.win_ratio} wins={w.win_count} total={w.close_count} /></span>
               </div>
               <div className="whale-stat">
                 Last Active
@@ -187,6 +190,10 @@ export default function WhalesView() {
                 <div className="whale-stat">
                   Trades
                   <span>{selectedWhale.trade_count}</span>
+                </div>
+                <div className="whale-stat">
+                  Win Ratio
+                  <span><WinRatio ratio={selectedWhale.win_ratio} wins={selectedWhale.win_count} total={selectedWhale.close_count} /></span>
                 </div>
               </div>
             </div>
@@ -330,6 +337,21 @@ export default function WhalesView() {
         </div>
       )}
     </div>
+  );
+}
+
+function WinRatio({ ratio, wins, total }) {
+  if (ratio == null || total === 0) {
+    return <span style={{ color: 'var(--text-muted)' }}>--</span>;
+  }
+  const color = ratio >= 50 ? 'var(--green)' : 'var(--red)';
+  return (
+    <span title={`${wins}W / ${total - wins}L (${total} closed trades)`}>
+      <span style={{ color, fontWeight: 600 }}>{ratio}%</span>
+      <span style={{ color: 'var(--text-muted)', fontSize: 11, marginLeft: 4 }}>
+        {wins}/{total}
+      </span>
+    </span>
   );
 }
 
