@@ -238,32 +238,44 @@ function getTrades({
   min_notional = null,
   side = null,
   since = null,
+  direction = null,
+  sort_by = 'time',
+  sort_dir = 'DESC',
 } = {}) {
   const conditions = [];
   const params = [];
 
   if (coin) {
-    conditions.push('coin = ?');
+    conditions.push('t.coin = ?');
     params.push(coin);
   }
   if (whale_address) {
-    conditions.push('whale_address = ?');
+    conditions.push('t.whale_address = ?');
     params.push(whale_address);
   }
   if (min_notional) {
-    conditions.push('notional >= ?');
+    conditions.push('t.notional >= ?');
     params.push(min_notional);
   }
   if (side) {
-    conditions.push('side = ?');
+    conditions.push('t.side = ?');
     params.push(side);
   }
   if (since) {
-    conditions.push('time >= ?');
+    conditions.push('t.time >= ?');
     params.push(since);
+  }
+  if (direction) {
+    conditions.push('t.direction = ?');
+    params.push(direction);
   }
 
   const where = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
+
+  const validSortCols = ['time', 'coin', 'notional', 'price', 'size', 'closed_pnl', 'leverage', 'fee'];
+  const sortCol = validSortCols.includes(sort_by) ? sort_by : 'time';
+  const dir = sort_dir === 'ASC' ? 'ASC' : 'DESC';
+
   params.push(limit, offset);
 
   return getDb()
@@ -272,7 +284,7 @@ function getTrades({
        FROM trades t
        LEFT JOIN whales w ON t.whale_address = w.address
        ${where}
-       ORDER BY t.time DESC
+       ORDER BY t.${sortCol} ${dir}
        LIMIT ? OFFSET ?`
     )
     .all(...params);

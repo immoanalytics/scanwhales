@@ -1,7 +1,22 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import * as api from '../api';
 
 const HL_EXPLORER = 'https://app.hyperliquid.xyz';
+
+const COLUMNS = [
+  { key: 'time', label: 'Time', sortable: true },
+  { key: 'coin', label: 'Pair', sortable: true },
+  { key: 'side', label: 'Side', sortable: true },
+  { key: 'direction', label: 'Direction', sortable: true },
+  { key: 'price', label: 'Price', sortable: true },
+  { key: 'size', label: 'Size', sortable: true },
+  { key: 'notional', label: 'Notional', sortable: true },
+  { key: 'leverage', label: 'Leverage', sortable: true },
+  { key: 'closed_pnl', label: 'PnL', sortable: true },
+  { key: 'fee', label: 'Fee', sortable: true },
+  { key: 'whale', label: 'Whale', sortable: false },
+  { key: 'link', label: 'Link', sortable: false },
+];
 
 export default function TradesView({ liveTrades }) {
   const [historicalTrades, setHistoricalTrades] = useState([]);
@@ -11,12 +26,14 @@ export default function TradesView({ liveTrades }) {
     side: '',
     min_notional: '',
     whale_address: '',
+    direction: '',
   });
+  const [sort, setSort] = useState({ column: 'time', dir: 'DESC' });
   const [page, setPage] = useState(0);
 
   useEffect(() => {
     loadTrades();
-  }, [filters]);
+  }, [filters, sort]);
 
   async function loadTrades(offset = 0) {
     setLoading(true);
@@ -25,6 +42,8 @@ export default function TradesView({ liveTrades }) {
         ...filters,
         limit: 100,
         offset,
+        sort_by: sort.column,
+        sort_dir: sort.dir,
       });
       if (offset === 0) {
         setHistoricalTrades(trades);
@@ -38,8 +57,19 @@ export default function TradesView({ liveTrades }) {
     setLoading(false);
   }
 
+  const toggleSort = useCallback((column) => {
+    setSort((prev) => {
+      if (prev.column === column) {
+        return { column, dir: prev.dir === 'DESC' ? 'ASC' : 'DESC' };
+      }
+      // Default direction per column type
+      const defaultDesc = ['time', 'notional', 'price', 'size', 'leverage', 'fee', 'closed_pnl'];
+      return { column, dir: defaultDesc.includes(column) ? 'DESC' : 'ASC' };
+    });
+  }, []);
+
   // Merge live trades with historical, dedup by tid+whale_address
-  const allTrades = useMemo(() => {
+  const deduped = useMemo(() => {
     const seen = new Set();
     const merged = [];
 
@@ -51,6 +81,7 @@ export default function TradesView({ liveTrades }) {
       if (filters.side && t.side !== filters.side) continue;
       if (filters.min_notional && t.notional < parseFloat(filters.min_notional)) continue;
       if (filters.whale_address && t.whale_address !== filters.whale_address) continue;
+      if (filters.direction && t.direction !== filters.direction) continue;
       merged.push(t);
     }
 
@@ -63,6 +94,30 @@ export default function TradesView({ liveTrades }) {
 
     return merged;
   }, [liveTrades, historicalTrades, filters]);
+
+  // Client-side sort on the merged set
+  const allTrades = useMemo(() => {
+    const col = sort.column;
+    const mult = sort.dir === 'ASC' ? 1 : -1;
+
+    return [...deduped].sort((a, b) => {
+      let va = a[col];
+      let vb = b[col];
+
+      // Handle nulls — push to end
+      if (va == null && vb == null) return 0;
+      if (va == null) return 1;
+      if (vb == null) return -1;
+
+      // Strings
+      if (typeof va === 'string' && typeof vb === 'string') {
+        return mult * va.localeCompare(vb);
+      }
+
+      // Numbers
+      return mult * (Number(va) - Number(vb));
+    });
+  }, [deduped, sort]);
 
   return (
     <div>
@@ -86,6 +141,19 @@ export default function TradesView({ liveTrades }) {
             <option value="">All</option>
             <option value="B">Buy</option>
             <option value="A">Sell</option>
+          </select>
+        </div>
+        <div className="filter-group">
+          <label>Direction</label>
+          <select
+            value={filters.direction}
+            onChange={(e) => setFilters((f) => ({ ...f, direction: e.target.value }))}
+          >
+            <option value="">All</option>
+            <option value="Open Long">Open Long</option>
+            <option value="Open Short">Open Short</option>
+            <option value="Close Long">Close Long</option>
+            <option value="Close Short">Close Short</option>
           </select>
         </div>
         <div className="filter-group">
@@ -115,24 +183,26 @@ export default function TradesView({ liveTrades }) {
           <table>
             <thead>
               <tr>
-                <th>Time</th>
-                <th>Pair</th>
-                <th>Side</th>
-                <th>Direction</th>
-                <th>Price</th>
-                <th>Size</th>
-                <th>Notional</th>
-                <th>Leverage</th>
-                <th>PnL</th>
-                <th>Fee</th>
-                <th>Whale</th>
-                <th>Link</th>
+                {COLUMNS.map((col) => (
+                  <th
+                    key={col.key}
+                    className={col.sortable ? 'sortable-th' : ''}
+                    onClick={col.sortable ? () => toggleSort(col.key) : undefined}
+                  >
+                    <span className="th-content">
+                      {col.label}
+                      {col.sortable && (
+                        <SortIndicator column={col.key} active={sort.column} dir={sort.dir} />
+                      )}
+                    </span>
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
               {allTrades.length === 0 && !loading && (
                 <tr>
-                  <td colSpan="12">
+                  <td colSpan={COLUMNS.length}>
                     <div className="empty-state">
                       <h3>No whale trades yet</h3>
                       <p>Waiting for large trades on monitored pairs...</p>
@@ -226,6 +296,15 @@ export default function TradesView({ liveTrades }) {
         )}
       </div>
     </div>
+  );
+}
+
+function SortIndicator({ column, active, dir }) {
+  const isActive = column === active;
+  return (
+    <span className={`sort-indicator ${isActive ? 'sort-active' : ''}`}>
+      {isActive ? (dir === 'ASC' ? '\u25B2' : '\u25BC') : '\u25B4'}
+    </span>
   );
 }
 

@@ -39,7 +39,7 @@ app.get('/api/stats', (req, res) => {
 // Trades
 app.get('/api/trades', (req, res) => {
   try {
-    const { limit, offset, coin, whale_address, min_notional, side, since } = req.query;
+    const { limit, offset, coin, whale_address, min_notional, side, since, direction, sort_by, sort_dir } = req.query;
     const trades = db.getTrades({
       limit: Math.min(parseInt(limit) || 100, 500),
       offset: parseInt(offset) || 0,
@@ -48,6 +48,9 @@ app.get('/api/trades', (req, res) => {
       min_notional: min_notional ? parseFloat(min_notional) : null,
       side: side || null,
       since: since ? parseInt(since) : null,
+      direction: direction || null,
+      sort_by: sort_by || 'time',
+      sort_dir: sort_dir || 'DESC',
     });
     res.json(trades);
   } catch (e) {
