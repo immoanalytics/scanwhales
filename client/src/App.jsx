@@ -18,6 +18,15 @@ export default function App() {
       const trade = { ...msg.trade, _isNew: true, _isNewWhale: msg.type === 'new_whale_trade' };
       liveTradesRef.current = [trade, ...liveTradesRef.current].slice(0, 200);
       setLiveTrades([...liveTradesRef.current]);
+    } else if (msg.type === 'trade_enriched') {
+      // Update live trades in-place with enrichment data (direction, PnL, leverage, etc.)
+      const { tid, whale_address, enrichment } = msg;
+      liveTradesRef.current = liveTradesRef.current.map((t) =>
+        t.tid === tid && t.whale_address === whale_address
+          ? { ...t, ...enrichment }
+          : t
+      );
+      setLiveTrades([...liveTradesRef.current]);
     }
   }, []);
 

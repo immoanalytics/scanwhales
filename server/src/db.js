@@ -41,9 +41,15 @@ function initSchema() {
       buyer TEXT,
       seller TEXT,
       whale_address TEXT,
+      direction TEXT,
+      closed_pnl REAL,
+      fee REAL,
+      is_taker INTEGER,
+      leverage REAL,
       FOREIGN KEY (whale_address) REFERENCES whales(address)
     );
 
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_trades_dedup ON trades(tid, whale_address);
     CREATE INDEX IF NOT EXISTS idx_trades_time ON trades(time DESC);
     CREATE INDEX IF NOT EXISTS idx_trades_whale ON trades(whale_address);
     CREATE INDEX IF NOT EXISTS idx_trades_coin ON trades(coin);
@@ -55,6 +61,24 @@ function initSchema() {
       value TEXT NOT NULL
     );
   `);
+
+  // Migrate: add new columns if they don't exist (safe for existing DBs)
+  const cols = db.prepare("PRAGMA table_info(trades)").all().map((c) => c.name);
+  if (!cols.includes('direction')) {
+    db.exec('ALTER TABLE trades ADD COLUMN direction TEXT');
+  }
+  if (!cols.includes('closed_pnl')) {
+    db.exec('ALTER TABLE trades ADD COLUMN closed_pnl REAL');
+  }
+  if (!cols.includes('fee')) {
+    db.exec('ALTER TABLE trades ADD COLUMN fee REAL');
+  }
+  if (!cols.includes('is_taker')) {
+    db.exec('ALTER TABLE trades ADD COLUMN is_taker INTEGER');
+  }
+  if (!cols.includes('leverage')) {
+    db.exec('ALTER TABLE trades ADD COLUMN leverage REAL');
+  }
 
   // Insert default settings if not present
   const defaults = {
@@ -86,8 +110,8 @@ function setSetting(key, value) {
 function insertTrade(trade) {
   return getDb()
     .prepare(
-      `INSERT INTO trades (coin, side, price, size, notional, time, hash, tid, buyer, seller, whale_address)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT OR IGNORE INTO trades (coin, side, price, size, notional, time, hash, tid, buyer, seller, whale_address, direction, closed_pnl, fee, is_taker, leverage)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       trade.coin,
@@ -100,8 +124,43 @@ function insertTrade(trade) {
       trade.tid || null,
       trade.buyer || null,
       trade.seller || null,
-      trade.whale_address || null
+      trade.whale_address || null,
+      trade.direction || null,
+      trade.closed_pnl ?? null,
+      trade.fee ?? null,
+      trade.is_taker ?? null,
+      trade.leverage ?? null
     );
+}
+
+function enrichTrade(tid, whaleAddress, enrichment) {
+  const fields = [];
+  const values = [];
+  if (enrichment.direction !== undefined) {
+    fields.push('direction = ?');
+    values.push(enrichment.direction);
+  }
+  if (enrichment.closed_pnl !== undefined) {
+    fields.push('closed_pnl = ?');
+    values.push(enrichment.closed_pnl);
+  }
+  if (enrichment.fee !== undefined) {
+    fields.push('fee = ?');
+    values.push(enrichment.fee);
+  }
+  if (enrichment.is_taker !== undefined) {
+    fields.push('is_taker = ?');
+    values.push(enrichment.is_taker ? 1 : 0);
+  }
+  if (enrichment.leverage !== undefined) {
+    fields.push('leverage = ?');
+    values.push(enrichment.leverage);
+  }
+  if (fields.length === 0) return;
+  values.push(tid, whaleAddress);
+  getDb()
+    .prepare(`UPDATE trades SET ${fields.join(', ')} WHERE tid = ? AND whale_address = ?`)
+    .run(...values);
 }
 
 function upsertWhale(address, time, notional) {
@@ -271,6 +330,7 @@ module.exports = {
   getSetting,
   setSetting,
   insertTrade,
+  enrichTrade,
   upsertWhale,
   getWhales,
   getWhale,

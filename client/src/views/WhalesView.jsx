@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import * as api from '../api';
 
+const HL_EXPLORER = 'https://app.hyperliquid.xyz';
+
 export default function WhalesView() {
   const [whales, setWhales] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -100,7 +102,15 @@ export default function WhalesView() {
           <div key={w.address} className="whale-card" onClick={() => openWhale(w)}>
             <div className="whale-card-header">
               <div>
-                <span className="whale-card-addr">{shortAddr(w.address)}</span>
+                <a
+                  className="whale-card-addr"
+                  href={`${HL_EXPLORER}/explorer/address/${w.address}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {shortAddr(w.address)}
+                </a>
                 {w.label && <span className="whale-label">{w.label}</span>}
               </div>
               <button
@@ -144,7 +154,14 @@ export default function WhalesView() {
         <div className="modal-overlay" onClick={() => setSelectedWhale(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <h2>
-              <span className="whale-card-addr">{selectedWhale.address}</span>
+              <a
+                className="whale-card-addr"
+                href={`${HL_EXPLORER}/explorer/address/${selectedWhale.address}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {selectedWhale.address}
+              </a>
               <button className="modal-close" onClick={() => setSelectedWhale(null)}>
                 &times;
               </button>
@@ -237,8 +254,11 @@ export default function WhalesView() {
                     <th>Time</th>
                     <th>Pair</th>
                     <th>Side</th>
-                    <th>Price</th>
+                    <th>Direction</th>
                     <th>Notional</th>
+                    <th>Lev</th>
+                    <th>PnL</th>
+                    <th>Link</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -249,17 +269,56 @@ export default function WhalesView() {
                       <td className={t.side === 'B' ? 'side-buy' : 'side-sell'}>
                         {t.side === 'B' ? 'BUY' : 'SELL'}
                       </td>
-                      <td>${formatPrice(t.price)}</td>
+                      <td>
+                        {t.direction ? (
+                          <span className={`dir-badge ${dirClass(t.direction)}`}>
+                            {t.direction}
+                          </span>
+                        ) : '--'}
+                      </td>
                       <td style={{ fontWeight: 600 }}>
                         ${Number(t.notional).toLocaleString(undefined, {
                           maximumFractionDigits: 0,
                         })}
                       </td>
+                      <td>
+                        {t.leverage ? <span className="leverage-badge">{t.leverage}x</span> : '--'}
+                      </td>
+                      <td>
+                        {t.closed_pnl != null && t.closed_pnl !== 0 ? (
+                          <span
+                            style={{
+                              color: t.closed_pnl > 0 ? 'var(--green)' : 'var(--red)',
+                              fontWeight: 600,
+                              fontSize: 12,
+                            }}
+                          >
+                            {t.closed_pnl > 0 ? '+' : ''}$
+                            {Number(t.closed_pnl).toLocaleString(undefined, {
+                              maximumFractionDigits: 2,
+                            })}
+                          </span>
+                        ) : (
+                          <span style={{ color: 'var(--text-muted)' }}>--</span>
+                        )}
+                      </td>
+                      <td>
+                        {t.hash ? (
+                          <a
+                            className="link-btn"
+                            href={`${HL_EXPLORER}/explorer/tx/${t.hash}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            TX
+                          </a>
+                        ) : '--'}
+                      </td>
                     </tr>
                   ))}
                   {whaleTrades.length === 0 && (
                     <tr>
-                      <td colSpan="5" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
+                      <td colSpan="8" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
                         No trades recorded yet
                       </td>
                     </tr>
@@ -300,6 +359,18 @@ function formatDateTime(ts) {
     ' ' +
     d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   );
+}
+
+function dirClass(dir) {
+  if (!dir) return '';
+  const d = dir.toLowerCase();
+  if (d.includes('open') && d.includes('long')) return 'dir-open-long';
+  if (d.includes('open') && d.includes('short')) return 'dir-open-short';
+  if (d.includes('close') && d.includes('long')) return 'dir-close-long';
+  if (d.includes('close') && d.includes('short')) return 'dir-close-short';
+  if (d === 'buy') return 'dir-open-long';
+  if (d === 'sell') return 'dir-open-short';
+  return '';
 }
 
 function formatPrice(p) {
