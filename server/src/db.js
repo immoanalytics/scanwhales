@@ -213,7 +213,7 @@ function getWhales({ limit = 100, offset = 0, tracked_only = false, sort = 'tota
          GROUP BY whale_address
        ) s ON w.address = s.whale_address
        ${where}
-       ORDER BY ${sortCol} DESC NULLS LAST
+       ORDER BY CASE WHEN ${sortCol} IS NULL THEN 1 ELSE 0 END, ${sortCol} DESC
        LIMIT ? OFFSET ?`
     )
     .all(limit, offset);
