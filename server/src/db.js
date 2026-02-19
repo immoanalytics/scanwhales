@@ -220,6 +220,10 @@ function getWhales({ limit = 100, offset = 0, tracked_only = false, sort = 'tota
 }
 
 function getWhale(address) {
+  return getDb().prepare('SELECT * FROM whales WHERE address = ?').get(address);
+}
+
+function getWhaleWithStats(address) {
   return getDb()
     .prepare(
       `SELECT w.*,
@@ -380,6 +384,7 @@ module.exports = {
   upsertWhale,
   getWhales,
   getWhale,
+  getWhaleWithStats,
   updateWhale,
   getTrades,
   getStats,

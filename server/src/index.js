@@ -74,10 +74,10 @@ app.get('/api/whales', (req, res) => {
   }
 });
 
-// Single whale
+// Single whale (with win ratio stats)
 app.get('/api/whales/:address', (req, res) => {
   try {
-    const whale = db.getWhale(req.params.address);
+    const whale = db.getWhaleWithStats(req.params.address);
     if (!whale) return res.status(404).json({ error: 'Whale not found' });
     res.json(whale);
   } catch (e) {
@@ -90,7 +90,7 @@ app.patch('/api/whales/:address', (req, res) => {
   try {
     const { label, is_tracked, notes } = req.body;
     db.updateWhale(req.params.address, { label, is_tracked, notes });
-    const whale = db.getWhale(req.params.address);
+    const whale = db.getWhaleWithStats(req.params.address);
     res.json(whale);
   } catch (e) {
     res.status(500).json({ error: e.message });
