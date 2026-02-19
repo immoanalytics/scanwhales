@@ -82,9 +82,9 @@ function initSchema() {
 
   // Insert default settings if not present
   const defaults = {
-    min_notional: '50000',
+    min_notional: '500000',
     monitored_coins: 'BTC,ETH,SOL,DOGE,XRP,AVAX,LINK,ARB,OP,SUI,APT,WIF,PEPE,ONDO,HYPE',
-    whale_threshold: '100000',
+    whale_threshold: '1000000',
     max_trades_kept: '50000',
   };
 

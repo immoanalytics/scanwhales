@@ -647,13 +647,239 @@ a.whale-card-addr:hover {
   text-decoration: underline;
 }
 
-/* Responsive */
+/* Responsive — tablets & smaller */
 @media (max-width: 768px) {
-  .header { padding: 0 12px; }
-  .main { padding: 12px; }
-  .stats-bar { grid-template-columns: repeat(2, 1fr); }
-  .filter-bar { flex-direction: column; }
-  .whale-grid { grid-template-columns: 1fr; }
-  .setting-row { flex-direction: column; align-items: flex-start; gap: 6px; }
-  .setting-row input { width: 100%; }
+  .header {
+    padding: 0 10px;
+    height: 48px;
+    gap: 0;
+  }
+
+  .header-left {
+    gap: 10px;
+  }
+
+  .logo {
+    font-size: 15px;
+  }
+
+  .nav-btn {
+    padding: 5px 10px;
+    font-size: 12px;
+  }
+
+  .connection-status {
+    font-size: 11px;
+  }
+
+  .main {
+    padding: 10px;
+  }
+
+  /* Stats bar — compact 2-column */
+  .stats-bar {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .stat-card {
+    padding: 10px 12px;
+    border-radius: 8px;
+  }
+
+  .stat-label {
+    font-size: 10px;
+    margin-bottom: 2px;
+  }
+
+  .stat-value {
+    font-size: 17px;
+  }
+
+  /* Filter bar — horizontal scroll, single row */
+  .filter-bar {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 8px;
+    padding-bottom: 6px;
+    margin-bottom: 10px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .filter-group {
+    flex-shrink: 0;
+  }
+
+  .filter-bar input,
+  .filter-bar select {
+    padding: 8px 10px;
+    font-size: 13px;
+    min-height: 36px;
+  }
+
+  .filter-bar input {
+    width: 100px !important;
+  }
+
+  /* Tables — horizontal scroll */
+  .table-container {
+    border-radius: 8px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  table {
+    font-size: 12px;
+  }
+
+  thead th {
+    padding: 8px 10px;
+    font-size: 10px;
+  }
+
+  td {
+    padding: 8px 10px;
+  }
+
+  .trade-list {
+    max-height: calc(100vh - 240px);
+  }
+
+  /* Whale grid */
+  .whale-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .whale-card {
+    padding: 12px;
+    border-radius: 8px;
+  }
+
+  .whale-card-stats {
+    gap: 6px;
+  }
+
+  .whale-stat {
+    font-size: 11px;
+  }
+
+  .whale-stat span {
+    font-size: 14px;
+  }
+
+  /* Modal — near full screen on mobile */
+  .modal {
+    width: 96%;
+    max-height: 90vh;
+    padding: 16px;
+    border-radius: 10px;
+  }
+
+  .modal h2 {
+    font-size: 13px;
+    word-break: break-all;
+  }
+
+  .modal .table-container {
+    overflow-x: auto;
+  }
+
+  .editable-label {
+    width: 160px;
+  }
+
+  /* Settings */
+  .settings-panel {
+    max-width: 100%;
+  }
+
+  .setting-group {
+    padding: 14px;
+  }
+
+  .setting-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .setting-row input,
+  .setting-row textarea {
+    width: 100%;
+  }
+
+  /* Bigger tap targets for buttons */
+  .btn {
+    padding: 10px 16px;
+    font-size: 14px;
+  }
+
+  .track-toggle {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  .link-btn {
+    padding: 4px 10px;
+  }
+}
+
+/* Responsive — small phones */
+@media (max-width: 480px) {
+  .header-left {
+    gap: 6px;
+  }
+
+  .logo {
+    font-size: 14px;
+  }
+
+  .nav-btn {
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+
+  .main {
+    padding: 8px;
+  }
+
+  .stats-bar {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+  }
+
+  .stat-card {
+    padding: 8px 10px;
+  }
+
+  .stat-value {
+    font-size: 15px;
+  }
+
+  .stat-label {
+    font-size: 9px;
+  }
+
+  .whale-card {
+    padding: 10px;
+  }
+
+  .whale-stat span {
+    font-size: 13px;
+  }
+
+  .modal {
+    width: 100%;
+    max-height: 95vh;
+    padding: 12px;
+    border-radius: 8px 8px 0 0;
+    margin-top: auto;
+  }
+
+  .modal-overlay {
+    align-items: flex-end;
+  }
 }
