@@ -55,7 +55,11 @@ async function getRecentTrades(coin) {
 }
 
 async function getUserFills(user) {
-  return postInfo({ type: 'userFills', user, aggregateByTime: true });
+  return postInfo({ type: 'userFills', user });
+}
+
+async function getUserFillsByTime(user, startTime) {
+  return postInfo({ type: 'userFillsByTime', user, startTime });
 }
 
 async function getClearinghouseState(user) {
@@ -225,6 +229,7 @@ module.exports = {
   getAllMids,
   getRecentTrades,
   getUserFills,
+  getUserFillsByTime,
   getClearinghouseState,
   getSpotClearinghouseState,
   HyperliquidWS,

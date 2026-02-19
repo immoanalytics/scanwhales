@@ -14,8 +14,9 @@ class WhaleScanner {
     this.recentTids = new Set();
     this.tidCleanupInterval = null;
     // Enrichment queue: batch whale addresses to enrich
-    this.enrichQueue = new Map(); // whale_address -> Set<tid>
+    this.enrichQueue = new Map(); // whale_address -> Map<tid, { time }>
     this.enrichTimer = null;
+    this.enrichRetries = new Map(); // "tid:whale" -> retries remaining
   }
 
   async start() {
@@ -155,7 +156,7 @@ class WhaleScanner {
         });
 
         // Queue for async enrichment
-        this._queueEnrich(whaleAddr, trade.tid);
+        this._queueEnrich(whaleAddr, trade.tid, trade.time);
 
         if (isNew) {
           console.log(
@@ -166,11 +167,11 @@ class WhaleScanner {
     }
   }
 
-  _queueEnrich(whaleAddr, tid) {
+  _queueEnrich(whaleAddr, tid, time) {
     if (!this.enrichQueue.has(whaleAddr)) {
-      this.enrichQueue.set(whaleAddr, new Set());
+      this.enrichQueue.set(whaleAddr, new Map());
     }
-    this.enrichQueue.get(whaleAddr).add(tid);
+    this.enrichQueue.get(whaleAddr).set(tid, { time });
 
     // Debounce: process enrichment queue every 3 seconds
     if (!this.enrichTimer) {
@@ -185,10 +186,18 @@ class WhaleScanner {
     const queue = new Map(this.enrichQueue);
     this.enrichQueue.clear();
 
-    for (const [whaleAddr, tids] of queue) {
+    for (const [whaleAddr, tidMap] of queue) {
       try {
-        // Fetch recent fills for this whale
-        const fills = await hl.getUserFills(whaleAddr);
+        // Use userFillsByTime with startTime slightly before earliest trade
+        const earliestTime = Math.min(...[...tidMap.values()].map((t) => t.time));
+        const startTime = earliestTime - 10000; // 10s buffer
+
+        // Fetch fills by time range for better coverage
+        let fills = await hl.getUserFillsByTime(whaleAddr, startTime);
+        if (!Array.isArray(fills)) {
+          // Fallback to recent fills
+          fills = await hl.getUserFills(whaleAddr);
+        }
         if (!Array.isArray(fills)) continue;
 
         // Also fetch clearinghouse state for leverage info
@@ -213,9 +222,23 @@ class WhaleScanner {
           fillsByTid.set(fill.tid, fill);
         }
 
-        for (const tid of tids) {
+        for (const [tid, meta] of tidMap) {
           const fill = fillsByTid.get(tid);
-          if (!fill) continue;
+          if (!fill) {
+            // Retry: re-queue missed tids (up to 2 retries)
+            const retryKey = `${tid}:${whaleAddr}`;
+            const remaining = (this.enrichRetries.get(retryKey) ?? 2) - 1;
+            if (remaining > 0) {
+              this.enrichRetries.set(retryKey, remaining);
+              this._queueEnrich(whaleAddr, tid, meta.time);
+            } else {
+              this.enrichRetries.delete(retryKey);
+            }
+            continue;
+          }
+
+          // Clear retry counter on success
+          this.enrichRetries.delete(`${tid}:${whaleAddr}`);
 
           const enrichment = {
             direction: fill.dir || null,
