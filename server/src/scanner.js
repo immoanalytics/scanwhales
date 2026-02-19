@@ -83,7 +83,7 @@ class WhaleScanner {
 
   _onTrades(trades) {
     const minNotional = parseFloat(db.getSetting('min_notional') || '50000');
-    const whaleThreshold = parseFloat(db.getSetting('whale_threshold') || '100000');
+    const whaleThreshold = parseFloat(db.getSetting('whale_threshold') || '500000');
 
     for (const trade of trades) {
       const price = parseFloat(trade.px);
